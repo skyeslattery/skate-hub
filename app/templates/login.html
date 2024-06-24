@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>skate hub</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+  <div class="container">
+    <h1>login</h1>
+
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      {{ form.username(size=32, placeholder="Username") }}
+      {{ form.password(size=32, placeholder="Password") }}
+      {{ form.submit(class="btn-small") }}
+    </form>
+
+    <div class="link-container">
+      <a href="{{ url_for('main.register') }}">don't have an account? sign up</a>
+    </div>
+  </div>
+</body>
+
+</html>
