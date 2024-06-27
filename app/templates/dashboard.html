@@ -6,6 +6,31 @@
 <div class="container">
   <h1>dashboard</h1>
   <p>welcome to skate hub, {{ current_user.username }}!</p>
-  <a href="{{ url_for('main.profile') }}">profile</a>
+  <a href="{{ url_for('main.spot_map') }}">spot map</a> <br>
+  <a href="{{ url_for('main.profile') }}">profile</a> <br>
+  <a href="{{ url_for('main.create_media') }}">create post</a> <br>
+
+  <h2>Posts</h2>
+  <div class="posts">
+    {% for post in posts %}
+    <div class="post">
+      <p>{{ post.content }}</p>
+      {% if post.caption %}
+      <p><strong>{{ post.caption }}</strong></p>
+      {% endif %}
+      <p><small>posted by {{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d
+          %H:%M:%S') }}{% endif %}</small></p>
+
+      <form action="{{ url_for('main.like_post', post_id=post.id) }}" method="POST" class="inline-form">
+        <button type="submit" class="btn btn-primary btn-small">Like</button>
+      </form>
+
+      <span>{{ post.likes|length }} likes</span>
+
+      <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
+        post.comments|length }} comments</a>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

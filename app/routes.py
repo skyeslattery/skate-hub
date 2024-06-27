@@ -1,9 +1,14 @@
-from flask import Blueprint, render_template, url_for, redirect, request, flash, current_app
+from flask import Blueprint, render_template, url_for, redirect, flash
 from flask_login import login_user, login_required, logout_user, current_user
 from app import db, bcrypt  
-from app.models import User, RegisterForm, LoginForm, ProfileForm
+from app.models import User, RegisterForm, LoginForm, ProfileForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm
+import os
+from dotenv import load_dotenv
 
 main = Blueprint('main', __name__)
+load_dotenv()
+
+maps_key = os.getenv('MAPS_KEY')
 
 @main.route('/')
 def home():
@@ -21,11 +26,6 @@ def login():
         else:
             flash('login failed. please check username and password.', 'danger')
     return render_template('login.html', form=form)
-
-@main.route('/dashboard', methods=['GET', 'POST'])
-@login_required
-def dashboard():
-    return render_template('dashboard.html')
 
 @main.route('/register', methods=['GET', 'POST'])
 def register():
@@ -59,6 +59,13 @@ def profile():
                 flash(f'{fieldName.capitalize()}: {err}', 'danger')
     return render_template('profile.html', form=form)
 
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    posts.reverse()
+    return render_template('dashboard.html', posts=posts)
+
 @main.route('/delete_profile', methods=['POST'])
 @login_required
 def delete_profile():
@@ -79,3 +86,93 @@ def logout():
     logout_user()
     flash('you have been logged out.', 'success')
     return redirect(url_for('main.login'))
+
+@main.route('/spot_map')
+@login_required
+def spot_map():
+    skate_spots = Spot.query.all()
+    skate_spots_dict = [spot.to_dict() for spot in skate_spots]
+    return render_template('spot_map.html', skate_spots=skate_spots_dict, maps_key=maps_key)
+
+@main.route('/post_spot', methods=['GET', 'POST'])
+@login_required
+def post_spot():
+    form = SpotForm()
+
+    if form.validate_on_submit():
+        new_spot = Spot(
+            name=form.spot_name.data,
+            description=form.description.data,
+            latitude=form.latitude.data,
+            longitude=form.longitude.data,
+            user_id=current_user.id
+        )
+        db.session.add(new_spot)
+        db.session.commit()
+        flash('new spot added!', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    # Handling form errors
+    if form.errors:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                flash(f'{fieldName.capitalize()}: {err}', 'danger')
+
+    return render_template('post_spot.html', form=form, maps_key=maps_key)
+
+@main.route('/create_media', methods=['GET', 'POST'])
+@login_required
+def create_media():
+    form = MediaForm()
+    form.associated_spot.choices = [(spot.id, spot.name) for spot in Spot.query.all()]
+
+    if form.validate_on_submit():
+        new_post = Post(
+            content=form.media.data, 
+            caption=form.caption.data,
+            user_id=current_user.id,
+            spot_id=form.associated_spot.data
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        flash('post created!', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    if form.errors:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                flash(f'{fieldName.capitalize()}: {err}', 'danger')
+
+    return render_template('create_post.html', form=form, maps_key=maps_key)
+
+@main.route('/like_post/<int:post_id>', methods=['POST'])
+@login_required
+def like_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
+
+    if like:
+        like = db.session.merge(like)
+        db.session.delete(like)
+    else:
+        like = Like(user_id=current_user.id, post_id=post_id)
+        db.session.add(like)
+
+    db.session.commit()
+    return redirect(url_for('main.dashboard'))
+
+@main.route('/comments/<int:post_id>', methods=['GET', 'POST'])
+@login_required
+def comments(post_id):
+    post = Post.query.get_or_404(post_id)
+    form = CommentForm()
+
+    if form.validate_on_submit():
+        comment = Comment(text=form.text.data, user_id=current_user.id, post_id=post.id)
+        db.session.add(comment)
+        db.session.commit()
+        flash('comment posted!', 'success')
+        return redirect(url_for('main.comments', post_id=post_id))
+
+    comments = Comment.query.filter_by(post_id=post_id).all()
+    return render_template('comments.html', post=post, form=form, comments=comments)

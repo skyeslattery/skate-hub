@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>spot map</h1>
+<a href="{{ url_for('main.post_spot')}}">post a spot</a><br>
+<a href="{{ url_for('main.dashboard')}}">home</a>
+<div id="map" style="height: 500px; width: 40%;"></div>
+<script>
+  let map;
+  let zoom = 4;
+
+  function initMap() {
+    const defaultLocation = { lat: 37.0902, lng: -95.7129 };
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: zoom,
+      center: defaultLocation
+    });
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          map.setCenter(pos);
+          map.setZoom(11);
+        },
+        () => {
+          handleLocationError(true, map.getCenter());
+        }
+      );
+    } else {
+      handleLocationError(false, map.getCenter());
+    }
+
+    loadSkateSpots();
+  }
+
+  function loadSkateSpots() {
+    const skateSpots = JSON.parse('{{ skate_spots|tojson|safe }}');
+
+    skateSpots.forEach(spot => {
+      const marker = new google.maps.Marker({
+        position: { lat: spot.latitude, lng: spot.longitude },
+        map: map,
+        title: spot.name
+      });
+      const infoWindow = new google.maps.InfoWindow({
+        content: `<div style="font-size: 14px;">${spot.name}<br>${spot.description}</div>`
+      });
+      marker.addListener('click', () => {
+        infoWindow.open(map, marker);
+      });
+    });
+  }
+
+  function handleLocationError(browserHasGeolocation, pos) {
+    const infoWindow = new google.maps.InfoWindow({
+      position: pos,
+      content: browserHasGeolocation
+        ? "error: the geolocation service failed."
+        : "error: your browser doesn't support geolocation."
+    });
+    infoWindow.open(map);
+  }
+
+  function recenterMap(latitude, longitude) {
+    const newPos = { lat: latitude, lng: longitude };
+    map.setCenter(newPos);
+    zoom = 11;
+  }
+
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{maps_key}}&callback=initMap"></script>
+{% endblock %}

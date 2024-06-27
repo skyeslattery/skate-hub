@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}post a skate spot{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>post a skate spot</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+      {{ form.spot_name.label }}
+      {{ form.spot_name(class="form-control") }}
+      {% for error in form.spot_name.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.description.label }}
+      {{ form.description(class="form-control") }}
+      {% for error in form.description.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <label for="map">Select Location</label>
+      <div id="map" style="height: 400px; width: 100%;"></div>
+      {% for error in form.latitude.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+      {% for error in form.longitude.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    {{ form.latitude(class="form-control", id="latitude") }}
+    {{ form.longitude(class="form-control", id="longitude") }}
+
+    <div class="form-group">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    function initMap() {
+      const defaultLocation = { lat: 37.0902, lng: -95.7129 };
+      const map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 8,
+        center: defaultLocation
+      });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            map.setCenter(pos);
+            map.setZoom(10);
+          },
+          () => {
+            handleLocationError(true, map.getCenter());
+          }
+        );
+      } else {
+        handleLocationError(false, map.getCenter());
+      }
+
+      let marker;
+
+      map.addListener('click', function (e) {
+        if (marker) {
+          marker.setPosition(e.latLng);
+        } else {
+          marker = new google.maps.Marker({
+            position: e.latLng,
+            map: map
+          });
+        }
+
+        // Hidden fields that update from marker location
+        document.getElementById('latitude').value = e.latLng.lat();
+        document.getElementById('longitude').value = e.latLng.lng();
+      });
+    }
+
+    window.initMap = initMap;
+
+    const mapsScript = document.createElement('script');
+    mapsScript.src = 'https://maps.googleapis.com/maps/api/js?key={{ maps_key }}&callback=initMap';
+    mapsScript.async = true;
+    mapsScript.defer = true;
+    document.head.appendChild(mapsScript);
+  });
+</script>
+{% endblock %}

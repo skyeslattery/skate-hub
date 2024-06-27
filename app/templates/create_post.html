@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}create post{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>create post</h1>
+  <form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+      {{ form.media.label }}
+      {{ form.media(class="form-control-file") }}
+      {% for error in form.media.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.caption.label }}
+      {{ form.caption(class="form-control") }}
+      {% for error in form.caption.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.associated_spot.label }}
+      {{ form.associated_spot(class="form-control") }}
+      {% for error in form.associated_spot.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <button type="submit" id="submit-btn" class="btn btn-primary">post</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

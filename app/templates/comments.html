@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}comments{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>comments for {{ post.caption }}</h1>
+
+  <ul class="list-group mb-4">
+    {% for comment in comments %}
+    <li class="list-group-item">
+      <strong>{{ comment.user.username }}</strong>: {{ comment.text }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>post a comment</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.text.label }}
+      {{ form.text(class="form-control") }}
+      {% for error in form.text.errors %}
+      <div class="invalid-feedback d-block">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+
+  <a href="{{ url_for('main.dashboard') }}">back</a>
+</div>
+{% endblock %}
