@@ -5,30 +5,41 @@
 {% block content %}
 <div class="container">
   <h1>dashboard</h1>
-  <p>welcome to skate hub, {{ current_user.username }}!</p>
-  <a href="{{ url_for('main.spot_map') }}">spot map</a> <br>
-  <a href="{{ url_for('main.profile') }}">profile</a> <br>
-  <a href="{{ url_for('main.create_media') }}">create post</a> <br>
+  <div class="link-container">
+    <a href="{{ url_for('main.spot_map') }}" class="btn btn-primary">spot map</a>
+    <a href="{{ url_for('main.create_media') }}" class="btn btn-primary">create post</a>
+    <a href="{{ url_for('main.profile') }}" class="btn btn-primary">profile</a>
+  </div>
 
   <h2>posts</h2>
   <div class="posts">
     {% for post in posts %}
     <div class="post">
-      <p>{{ post.content }}</p>
+
+      <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        }}{% endif %}</p>
+
+      <div class="post-content">
+        {% if post.content.endswith('.mp4') %}
+        <video controls>
+          <source src="{{ post.content }}" type="video/mp4">
+          your browser does not support the video tag.
+        </video>
+        {% else %}
+        <img src="{{ post.content }}" alt="post image">
+        {% endif %}
+      </div>
       {% if post.caption %}
-      <p><strong>{{ post.caption }}</strong></p>
+      <p class="post-caption">{{ post.caption }}</p>
       {% endif %}
-      <p><small>posted by {{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d
-          %H:%M:%S') }}{% endif %}</small></p>
-
-      <form action="{{ url_for('main.like_post', post_id=post.id) }}" method="POST" class="inline-form">
-        <button type="submit" class="btn btn-primary btn-small">like</button>
-      </form>
-
-      <span>{{ post.likes|length }} likes</span>
-
-      <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
-        post.comments|length }} comments</a>
+      <div class="post-actions">
+        <form action="{{ url_for('main.like_post', post_id=post.id) }}" method="POST" class="inline-form">
+          <button type="submit" class="btn btn-primary btn-small">like</button>
+        </form>
+        <span>{{ post.likes|length }} likes</span>
+        <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
+          post.comments|length }} comments</a>
+      </div>
     </div>
     {% endfor %}
   </div>

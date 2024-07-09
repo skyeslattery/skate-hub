@@ -227,9 +227,75 @@ input[type="submit"]:hover {
   padding: 5px 10px;
   border-radius: 5px;
   text-decoration: none;
-  font-size: 0.9em;
+  font-size: 1.2em;
 }
 
 .btn-primary:hover {
   background-color: #0056b3;
+}
+
+.posts {
+  margin-top: 20px;
+}
+
+.post {
+  border: 1px solid #ccc;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.post-content {
+  margin-bottom: 10px;
+}
+
+.post img,
+.post video {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.post-caption {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.post-info {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.post-actions {
+  margin-top: 10px;
+}
+
+.post-actions button {
+  margin-right: 10px;
+  background-color: #007BFF;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.post-actions button:hover {
+  background-color: #0056b3;
+}
+
+.inline-form {
+  display: inline-block;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 0.8em;
+  border-radius: 5px;
 }

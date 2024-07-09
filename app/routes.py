@@ -4,6 +4,9 @@ from app import db, bcrypt
 from app.models import User, RegisterForm, LoginForm, ProfileForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm
 import os
 from dotenv import load_dotenv
+import boto3
+from mimetypes import guess_type
+import uuid
 
 main = Blueprint('main', __name__)
 load_dotenv()
@@ -127,22 +130,68 @@ def create_media():
     form.associated_spot.choices = [('0', 'select a spot')] + [(spot.id, spot.name) for spot in Spot.query.all()]
 
     if form.validate_on_submit():
+        media_file = form.media.data  # Get the FileStorage object
+        caption = form.caption.data
         associated_spot_id = form.associated_spot.data
-        if not associated_spot_id:
-            associated_spot_id = None
 
-        new_post = Post(
-            content=form.media.data,
-            caption=form.caption.data,
-            user_id=current_user.id,
-            spot_id=associated_spot_id
-        )
-        db.session.add(new_post)
-        db.session.commit()
-        flash('New media post added!', 'success')
-        return redirect(url_for('main.dashboard'))
+        if media_file:
+            try:
+                # Handle file upload to S3
+                media_url = upload_to_s3(media_file)
+
+                if media_url:
+                    # Create a new post in your database
+                    new_post = Post(
+                        content=media_url,
+                        caption=caption,
+                        user_id=current_user.id,
+                        spot_id=associated_spot_id
+                    )
+                    db.session.add(new_post)
+                    db.session.commit()
+                    flash('New media post added!', 'success')
+                    return redirect(url_for('main.dashboard'))
+                else:
+                    flash('Failed to upload media. Please try again.', 'danger')
+            except Exception as e:
+                flash(f'Error uploading media: {str(e)}', 'danger')
+
+    # Handling form errors
+    if form.errors:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                flash(f'{fieldName.capitalize()}: {err}', 'danger')
 
     return render_template('create_post.html', form=form)
+
+s3 = boto3.client('s3')
+
+def upload_to_s3(file_obj):
+    try:
+        file_name = str(uuid.uuid4())
+        mime_type, _ = guess_type(file_obj.filename)
+        file_extension = mime_type.split('/')[1]
+
+        s3_key = f"{file_name}.{file_extension}"
+
+        s3.upload_fileobj(
+            file_obj,
+            os.getenv('S3_BUCKET_NAME'),  
+            s3_key,
+            ExtraArgs={
+                'ACL': 'public-read',  
+                'ContentType': mime_type  
+            }
+        )
+
+        file_url = f"https://{os.getenv('S3_BUCKET_NAME')}.s3.amazonaws.com/{s3_key}"
+
+        return file_url
+
+    except Exception as e:
+        print(f"Error uploading file to S3: {e}")
+        return None
+
 
 @main.route('/like_post/<int:post_id>', methods=['POST'])
 @login_required

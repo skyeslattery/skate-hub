@@ -1,11 +1,95 @@
 from flask_login import UserMixin
 from flask import flash
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, HiddenField, PasswordField, SubmitField, SelectField
+from flask_wtf.file import FileAllowed, FileRequired
+from wtforms import StringField, TextAreaField, HiddenField, PasswordField, SubmitField, SelectField, FileField
 from wtforms.validators import InputRequired, Length, ValidationError, Email
 from flask_sqlalchemy import SQLAlchemy
+import os
+from dotenv import load_dotenv
+from PIL import Image
+import re
+import datetime
+import base64
+import boto3
+from io import BytesIO
+from mimetypes import guess_type, guess_extension
+import string
+import random
 
 db = SQLAlchemy()
+
+load_dotenv()
+
+EXTENSIONS = ["png", "jpg", "jpeg", "mp4"]
+BASE_DIR = os.getcwd()
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+S3_BASE_URL = f"https://{S3_BUCKET_NAME}.s3.us-east-1.amazonaws.com"
+
+class Asset(db.Model):
+    __tablename__ = "asset"
+    id = db.Column(db.Integer, primary_key=True)
+    base_url = db.Column(db.String, nullable=False)
+    salt = db.Column(db.String, nullable=False)
+    extension = db.Column(db.String, nullable=False)
+    width = db.Column(db.Integer, nullable=True)
+    height = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, **kwargs):
+        self.create(kwargs.get("media_data"))
+
+    def serialize(self):
+        return {
+            "url": f"{self.base_url}/{self.salt}.{self.extension}",
+            "created_at": str(self.created_at)
+        }
+
+    def create(self, media_data):
+        try:
+            ext = guess_extension(guess_type(media_data)[0])[1:]
+
+            if ext not in EXTENSIONS:
+                raise Exception(f"{ext} is not supported")
+
+            salt = "".join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(16))
+
+            media_str = re.sub("^data:image/.+;base64,|^data:video/.+;base64,", "", media_data)
+            media_data = base64.b64decode(media_str)
+
+            self.base_url = S3_BASE_URL
+            self.salt = salt
+            self.extension = ext
+            self.created_at = datetime.datetime.now()
+
+            if ext in ["png", "jpg", "jpeg"]:
+                img = Image.open(BytesIO(media_data))
+                self.width = img.width
+                self.height = img.height
+
+            media_filename = f"{self.salt}.{self.extension}"
+            self.upload(media_data, media_filename)
+
+        except Exception as e:
+            print(f"error when creating media: {e}")
+
+    def upload(self, media_data, media_filename):
+        try:
+            media_temp_loc = f"{BASE_DIR}/{media_filename}"
+            with open(media_temp_loc, 'wb') as f:
+                f.write(media_data)
+
+            s3_client = boto3.client("s3")
+            s3_client.upload_file(media_temp_loc, S3_BUCKET_NAME, media_filename)
+
+            s3_resource = boto3.resource("s3")
+            object_acl = s3_resource.ObjectAcl(S3_BUCKET_NAME, media_filename)
+            object_acl.put(ACL="public-read")
+
+            os.remove(media_temp_loc)
+
+        except Exception as e:
+            print(f"error when uploading media: {e}")
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,7 +147,6 @@ class Spot(db.Model):
             'longitude': self.longitude
         }
 
-
 class SpotForm(FlaskForm):
     spot_name = StringField('spot name', validators=[InputRequired(), Length(max=100)])
     description = TextAreaField('description', validators=[InputRequired()])
@@ -72,20 +155,25 @@ class SpotForm(FlaskForm):
     submit = SubmitField('post spot')
 
 class MediaForm(FlaskForm):
-    media = StringField('media', validators=[Length(max=500)])
+    media = FileField('media', validators=[
+        FileRequired(),
+        FileAllowed(['jpg', 'jpeg', 'png', 'mp4'], 'Images and videos only!')
+    ])
     caption = StringField('caption', validators=[Length(max=500)])
     associated_spot = SelectField('add spot', coerce=int, choices=[('', 'select spot')])
     submit = SubmitField('post media')
 
 class Post(db.Model):
+    __tablename__ = "post"
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     caption = db.Column(db.String(500), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    spot_id = db.Column(db.Integer, db.ForeignKey('spot.id'), nullable=True)
+    spot_id = db.Column(db.Integer, db.ForeignKey('spot.id'))
     timestamp = db.Column(db.DateTime)
-    likes = db.relationship('Like', backref='Post', lazy=True)
-    comments = db.relationship('Comment', backref='Post', lazy=True)
+    likes = db.relationship('Like', backref='post', lazy=True)
+    comments = db.relationship('Comment', backref='post', lazy=True)
+    media_type = db.Column(db.String(10))
 
 class Like(db.Model):
     id = db.Column(db.Integer, primary_key=True)

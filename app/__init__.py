@@ -10,6 +10,11 @@ bcrypt = Bcrypt()
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.environ.get('SECRET_KEY', 'dev')
+
+    app.config['S3_BUCKET'] = 'skate-hub'
+    app.config['S3_KEY'] = 'AKIA4Y37UOSMJTSTND6V'
+    app.config['S3_SECRET'] = 'your-secret-key'
+    app.config['S3_LOCATION'] = f"http://{app.config['S3_BUCKET']}.s3.amazonaws.com/"
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
