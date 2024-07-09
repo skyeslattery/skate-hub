@@ -72,9 +72,9 @@ class SpotForm(FlaskForm):
     submit = SubmitField('post spot')
 
 class MediaForm(FlaskForm):
-    media =  StringField('media', validators=[Length(max=500)])
+    media = StringField('media', validators=[Length(max=500)])
     caption = StringField('caption', validators=[Length(max=500)])
-    associated_spot = SelectField('add spot', coerce=int) 
+    associated_spot = SelectField('add spot', coerce=int, choices=[('', 'select spot')])
     submit = SubmitField('post media')
 
 class Post(db.Model):
@@ -82,7 +82,7 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     caption = db.Column(db.String(500), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    spot_id = db.Column(db.Integer, db.ForeignKey('spot.id'), nullable=False)
+    spot_id = db.Column(db.Integer, db.ForeignKey('spot.id'), nullable=True)
     timestamp = db.Column(db.DateTime)
     likes = db.relationship('Like', backref='Post', lazy=True)
     comments = db.relationship('Comment', backref='Post', lazy=True)

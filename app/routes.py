@@ -124,26 +124,25 @@ def post_spot():
 @login_required
 def create_media():
     form = MediaForm()
-    form.associated_spot.choices = [(spot.id, spot.name) for spot in Spot.query.all()]
+    form.associated_spot.choices = [('0', 'select a spot')] + [(spot.id, spot.name) for spot in Spot.query.all()]
 
     if form.validate_on_submit():
+        associated_spot_id = form.associated_spot.data
+        if not associated_spot_id:
+            associated_spot_id = None
+
         new_post = Post(
-            content=form.media.data, 
+            content=form.media.data,
             caption=form.caption.data,
             user_id=current_user.id,
-            spot_id=form.associated_spot.data
+            spot_id=associated_spot_id
         )
         db.session.add(new_post)
         db.session.commit()
-        flash('post created!', 'success')
+        flash('New media post added!', 'success')
         return redirect(url_for('main.dashboard'))
 
-    if form.errors:
-        for fieldName, errorMessages in form.errors.items():
-            for err in errorMessages:
-                flash(f'{fieldName.capitalize()}: {err}', 'danger')
-
-    return render_template('create_post.html', form=form, maps_key=maps_key)
+    return render_template('create_post.html', form=form)
 
 @main.route('/like_post/<int:post_id>', methods=['POST'])
 @login_required
