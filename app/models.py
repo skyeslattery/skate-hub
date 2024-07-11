@@ -110,14 +110,12 @@ class RegisterForm(FlaskForm):
     def validate_username(self, username):
         existing_user_username = User.query.filter_by(username=username.data).first()
         if existing_user_username:
-            flash('username taken. try another one!', 'danger')
-            raise ValidationError('username taken.')
+            raise ValidationError('taken.')
         
     def validate_email(self, email):
         existing_user_email = User.query.filter_by(email=email.data).first()
         if existing_user_email:
-            flash('email already in use.', 'danger')
-            raise ValidationError('email already in use.')
+            raise ValidationError('already in use.')
 
 class LoginForm(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "username"})
@@ -128,6 +126,20 @@ class ProfileForm(FlaskForm):
     username = StringField('username', validators=[Length(min=4, max=20)])
     email = StringField('email', validators=[InputRequired(), Email()])
     submit = SubmitField('update profile')
+
+    def __init__(self, current_user_id, *args, **kwargs):
+        super(ProfileForm, self).__init__(*args, **kwargs)
+        self.current_user_id = current_user_id
+
+    def validate_username(self, username):
+        existing_user_username = User.query.filter(User.username == username.data, User.id != self.current_user_id).first()
+        if existing_user_username:
+            raise ValidationError('Username taken.')
+
+    def validate_email(self, email):
+        existing_user_email = User.query.filter(User.email == email.data, User.id != self.current_user_id).first()
+        if existing_user_email:
+            raise ValidationError('Email already in use.')
 
 class Spot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -175,6 +187,9 @@ class Post(db.Model):
     comments = db.relationship('Comment', backref='post', lazy=True)
     media_type = db.Column(db.String(10))
 
+    def is_liked_by(self, user):
+        return Like.query.filter_by(post_id=self.id, user_id=user.id).count() > 0
+
 class Like(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -190,3 +205,11 @@ class Comment(db.Model):
 class CommentForm(FlaskForm):
     text = StringField('comment', validators=[InputRequired()])
     submit = SubmitField('post comment')
+
+
+class EditPostForm(FlaskForm):
+    caption = StringField('caption', validators=[InputRequired()])
+    submit = SubmitField('update post')
+
+class EmptyForm(FlaskForm):
+    pass

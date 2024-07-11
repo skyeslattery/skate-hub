@@ -1,12 +1,18 @@
-from flask import Blueprint, render_template, url_for, redirect, flash
+from flask import Blueprint, render_template, url_for, redirect, flash, make_response, request
 from flask_login import login_user, login_required, logout_user, current_user
 from app import db, bcrypt  
-from app.models import User, RegisterForm, LoginForm, ProfileForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm
+from app.models import User, RegisterForm, LoginForm, ProfileForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm, EditPostForm, EmptyForm
 import os
 from dotenv import load_dotenv
 import boto3
 from mimetypes import guess_type
 import uuid
+import time
+from sqlalchemy.exc import OperationalError, PendingRollbackError
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 main = Blueprint('main', __name__)
 load_dotenv()
@@ -37,7 +43,7 @@ def register():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         new_user = User(username=form.username.data, password=hashed_password, email=form.email.data)
         db.session.add(new_user)
-        db.session.commit()
+        commit_session_with_retry(db.session)
         flash('Your account has been created!', 'success')
         return redirect(url_for('main.login'))
     elif form.errors:
@@ -49,25 +55,35 @@ def register():
 @main.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    form = ProfileForm(obj=current_user)
+    form = ProfileForm(obj=current_user, current_user_id=current_user.id)
     if form.validate_on_submit():
         current_user.username = form.username.data
         current_user.email = form.email.data
-        db.session.commit()
-        flash('your profile has been updated!', 'success')
+        try:
+            commit_session_with_retry(db.session)
+            flash('Your profile has been updated!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating the profile. Please try again.', 'danger')
         return redirect(url_for('main.profile'))
     elif form.errors:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
-                flash(f'{fieldName.capitalize()}: {err}', 'danger')
-    return render_template('profile.html', form=form)
+                flash(f'{fieldName}: {err}', 'danger')
+
+    response = make_response(render_template('profile.html', form=form))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @main.route('/dashboard')
 @login_required
 def dashboard():
     posts = Post.query.order_by(Post.timestamp.desc()).all()
     posts.reverse()
-    return render_template('dashboard.html', posts=posts)
+    form = EmptyForm()
+    return render_template('dashboard.html', posts=posts, form=form)
 
 @main.route('/delete_profile', methods=['POST'])
 @login_required
@@ -77,7 +93,7 @@ def delete_profile():
         user = db.session.merge(user)
         logout_user()
         db.session.delete(user)
-        db.session.commit()
+        commit_session_with_retry(db.session)
         flash('your profile has been deleted.', 'success')
     else:
         flash('user not found.', 'danger')
@@ -111,11 +127,10 @@ def post_spot():
             user_id=current_user.id
         )
         db.session.add(new_spot)
-        db.session.commit()
+        commit_session_with_retry(db.session)
         flash('new spot added!', 'success')
         return redirect(url_for('main.dashboard'))
 
-    # Handling form errors
     if form.errors:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
@@ -148,7 +163,7 @@ def create_media():
                         spot_id=associated_spot_id
                     )
                     db.session.add(new_post)
-                    db.session.commit()
+                    commit_session_with_retry(db.session)
                     flash('New media post added!', 'success')
                     return redirect(url_for('main.dashboard'))
                 else:
@@ -206,7 +221,7 @@ def like_post(post_id):
         like = Like(user_id=current_user.id, post_id=post_id)
         db.session.add(like)
 
-    db.session.commit()
+    commit_session_with_retry(db.session)
     return redirect(url_for('main.dashboard'))
 
 @main.route('/comments/<int:post_id>', methods=['GET', 'POST'])
@@ -218,9 +233,52 @@ def comments(post_id):
     if form.validate_on_submit():
         comment = Comment(text=form.text.data, user_id=current_user.id, post_id=post.id)
         db.session.add(comment)
-        db.session.commit()
+        commit_session_with_retry(db.session)
         flash('comment posted!', 'success')
         return redirect(url_for('main.comments', post_id=post_id))
 
     comments = Comment.query.filter_by(post_id=post_id).all()
     return render_template('comments.html', post=post, form=form, comments=comments)
+
+@main.route('/edit_post/<int:post_id>', methods=['GET', 'POST'])
+@login_required
+def edit_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    form = EditPostForm(obj=post)
+    
+    if post.user_id != current_user.id:
+        flash('You are not authorized to edit this post.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    if form.validate_on_submit():
+        post.caption = form.caption.data
+        try:
+            commit_session_with_retry(db.session)
+            flash('Post updated successfully!', 'success')
+            return redirect(url_for('main.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while updating the post: {str(e)}', 'danger')
+            return redirect(url_for('main.dashboard'))
+    
+    return render_template('edit_post.html', title='Edit Post', form=form, post=post)
+
+
+@main.route('/delete_post/<int:post_id>', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        flash('you do not have permission to delete this post.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    post = db.session.merge(post)
+    db.session.delete(post)
+    
+    try:
+        commit_session_with_retry(db.session)
+        flash('post deleted.', 'success')
+    except OperationalError:
+        flash('an error occurred while deleting the post. please try again.', 'danger')
+    
+    return redirect(url_for('main.dashboard'))

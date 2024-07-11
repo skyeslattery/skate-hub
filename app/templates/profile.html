@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 
-{% block title %}profile{% endblock %}
+{% block title %}Profile{% endblock %}
 
 {% block content %}
 <div class="container">
   <h1>Profile</h1>
-  <form method="POST" action="{{ url_for('main.profile') }}">
+  <form action="{{ url_for('main.profile') }}" method="POST">
     {{ form.hidden_tag() }}
     <div>
-      {{ form.email.label }} {{ form.email }}
+      {{ form.username.label }}
+      {{ form.username() }}
+      <br />
+      {{ form.email.label }}
+      {{ form.email() }}
     </div>
     <div>
-      {{ form.username.label }} {{ form.username }}
-    </div>
-    <div>
-      {{ form.submit }}
+      {{ form.submit() }}
     </div>
   </form>
-
   <form method="POST" action="{{ url_for('main.delete_profile') }}"
-    onsubmit="return confirm('are you sure you want to delete your profile?');">
-    <input type="submit" value="delete profile" class="btn-delete">
-    <a href="{{ url_for('main.dashboard') }}" class="btn-back">back</a>
+    onsubmit="return confirm('Are you sure you want to delete your profile?');">
+    <input type="submit" value="Delete Profile" class="btn-delete">
+    <a href="{{ url_for('main.dashboard') }}" class="btn-back">Back</a>
   </form>
 </div>
 {% endblock %}

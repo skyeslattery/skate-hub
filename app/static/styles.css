@@ -16,8 +16,9 @@ a:hover {
 }
 
 .container {
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: 800px;
+  /* Increased the max-width for larger content area */
+  margin: 20px auto;
   padding: 20px;
   background-color: #fff;
   border-radius: 8px;
@@ -29,71 +30,90 @@ h1 {
   color: #007BFF;
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+.link-container {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
-.form-group {
-  width: 100%;
-}
-
-input[type="text"],
-input[type="password"],
-textarea,
-select,
-input[type="file"] {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 1em;
-  width: 100%;
-}
-
-textarea {
-  resize: vertical;
-}
-
-.invalid-feedback {
-  color: #dc3545;
-  font-size: 0.9em;
-  margin-top: 5px;
-}
-
-button,
-input[type="submit"] {
-  padding: 10px 20px;
-  border: 1px solid #007BFF;
-  border-radius: 5px;
-  font-size: 1em;
+.btn-primary {
   background-color: #007BFF;
   color: #fff;
-  cursor: pointer;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 1.2em;
+  margin: 5px;
 }
 
-button:hover,
-input[type="submit"]:hover {
+.btn-primary:hover {
   background-color: #0056b3;
+}
+
+.posts {
+  margin-top: 20px;
+}
+
+.post {
+  border: 1px solid #ccc;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  /* Centering the content */
+}
+
+.post-info {
+  font-size: 1.2em;
+  color: #666;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.post-content {
+  margin-bottom: 10px;
+}
+
+.post img,
+.post video {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  /* Ensure the media scales properly */
+  height: auto;
+  border-radius: 8px;
+}
+
+.post-caption {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.post-actions {
+  margin-top: 10px;
+}
+
+.post-actions button {
+  margin-right: 10px;
+}
+
+.inline-form {
+  display: inline-block;
 }
 
 .btn-small {
   padding: 5px 10px;
   font-size: 0.8em;
-  border-radius: 1px;
-}
-
-.link-container {
-  text-align: center;
-  margin-top: 20px;
+  border-radius: 5px;
 }
 
 .btn-delete {
   padding: 8px 16px;
-  border: 1px #9e1414 !important;
+  border: 1px solid #9e1414 !important;
   border-radius: 5px;
   font-size: 0.9em;
-  margin-top: 25px;
   background-color: #9e1414 !important;
   color: #fff !important;
   cursor: pointer;
@@ -108,7 +128,6 @@ input[type="submit"]:hover {
   border: 1px solid #007BFF;
   border-radius: 5px;
   font-size: 0.9em;
-  margin-top: 15px;
   background-color: #007BFF;
   color: #fff;
   cursor: pointer;
@@ -173,129 +192,4 @@ input[type="submit"]:hover {
 
 .hidden {
   display: none;
-}
-
-.posts {
-  margin-top: 20px;
-}
-
-.post {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 5px;
-  background-color: #fafafa;
-}
-
-.inline-form {
-  display: inline-block;
-}
-
-.comments {
-  margin-top: 10px;
-}
-
-.list-group-item {
-  background-color: #fff;
-  border: 1px solid #ccc;
-  margin-bottom: 5px;
-  padding: 10px;
-  border-radius: 5px;
-}
-
-.like-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-right: 5px;
-  font-size: 1.5em;
-}
-
-.heart {
-  transition: color 0.3s;
-}
-
-.heart.liked {
-  color: red;
-}
-
-.btn-primary {
-  background-color: #007BFF;
-  color: #fff;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 5px;
-  text-decoration: none;
-  font-size: 1.2em;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.posts {
-  margin-top: 20px;
-}
-
-.post {
-  border: 1px solid #ccc;
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  text-align: left;
-}
-
-.post-content {
-  margin-bottom: 10px;
-}
-
-.post img,
-.post video {
-  display: block;
-  margin: 0 auto;
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-}
-
-.post-caption {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.post-info {
-  font-size: 0.8em;
-  color: #666;
-}
-
-.post-actions {
-  margin-top: 10px;
-}
-
-.post-actions button {
-  margin-right: 10px;
-  background-color: #007BFF;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 1em;
-  cursor: pointer;
-}
-
-.post-actions button:hover {
-  background-color: #0056b3;
-}
-
-.inline-form {
-  display: inline-block;
-}
-
-.btn-small {
-  padding: 5px 10px;
-  font-size: 0.8em;
-  border-radius: 5px;
 }

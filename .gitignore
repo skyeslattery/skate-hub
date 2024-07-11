@@ -8,4 +8,4 @@ instance/
 Thumbs.db
 venv/
 .env
-flask-env
+/*.db

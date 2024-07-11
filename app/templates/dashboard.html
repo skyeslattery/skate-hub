@@ -15,15 +15,15 @@
   <div class="posts">
     {% for post in posts %}
     <div class="post">
-
-      <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        }}{% endif %}</p>
+      <a href="{{ url_for('main.edit_post', post_id=post.id) }}" class="btn btn-primary">edit</a>
+      <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}{% endif
+        %}</p>
 
       <div class="post-content">
         {% if post.content.endswith('.mp4') %}
         <video controls>
           <source src="{{ post.content }}" type="video/mp4">
-          your browser does not support the video tag.
+          Your browser does not support the video tag.
         </video>
         {% else %}
         <img src="{{ post.content }}" alt="post image">
@@ -34,7 +34,10 @@
       {% endif %}
       <div class="post-actions">
         <form action="{{ url_for('main.like_post', post_id=post.id) }}" method="POST" class="inline-form">
-          <button type="submit" class="btn btn-primary btn-small">like</button>
+          {{ form.csrf_token }}
+          <button type="submit" class="btn btn-primary btn-small">
+            like
+          </button>
         </form>
         <span>{{ post.likes|length }} likes</span>
         <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
