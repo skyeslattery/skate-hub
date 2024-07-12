@@ -16,6 +16,7 @@ from io import BytesIO
 from mimetypes import guess_type, guess_extension
 import string
 import random
+import moviepy.editor as mp
 
 db = SQLAlchemy()
 
@@ -25,6 +26,9 @@ EXTENSIONS = ["png", "jpg", "jpeg", "mp4"]
 BASE_DIR = os.getcwd()
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 S3_BASE_URL = f"https://{S3_BUCKET_NAME}.s3.us-east-1.amazonaws.com"
+
+STANDARD_IMAGE_SIZE = (800, 800)
+STANDARD_VIDEO_SIZE = (1280, 720)
 
 class Asset(db.Model):
     __tablename__ = "asset"
@@ -47,31 +51,43 @@ class Asset(db.Model):
 
     def create(self, media_data):
         try:
-            ext = guess_extension(guess_type(media_data)[0])[1:]
+            media_str = re.sub("^data:image/.+;base64,|^data:video/.+;base64,", "", media_data)
+            media_data = base64.b64decode(media_str)
+            
+            ext = media_data.split(';')[0].split('/')[1]
 
             if ext not in EXTENSIONS:
                 raise Exception(f"{ext} is not supported")
 
             salt = "".join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
-            media_str = re.sub("^data:image/.+;base64,|^data:video/.+;base64,", "", media_data)
-            media_data = base64.b64decode(media_str)
-
             self.base_url = S3_BASE_URL
             self.salt = salt
             self.extension = ext
             self.created_at = datetime.datetime.now()
 
+            media_filename = f"{self.salt}.{self.extension}"
+
             if ext in ["png", "jpg", "jpeg"]:
                 img = Image.open(BytesIO(media_data))
-                self.width = img.width
-                self.height = img.height
+                img = img.resize(STANDARD_IMAGE_SIZE, Image.ANTIALIAS)
+                media_buffer = BytesIO()
+                img.save(media_buffer, format=ext.upper())
+                media_data = media_buffer.getvalue()
+                self.width, self.height = STANDARD_IMAGE_SIZE
 
-            media_filename = f"{self.salt}.{self.extension}"
+            elif ext == "mp4":
+                video = mp.VideoFileClip(BytesIO(media_data))
+                video = video.resize(STANDARD_VIDEO_SIZE)
+                media_buffer = BytesIO()
+                video.write_videofile(media_buffer, codec="libx264")
+                media_data = media_buffer.getvalue()
+
             self.upload(media_data, media_filename)
 
         except Exception as e:
             print(f"error when creating media: {e}")
+
 
     def upload(self, media_data, media_filename):
         try:

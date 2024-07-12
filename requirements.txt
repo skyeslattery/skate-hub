@@ -31,3 +31,5 @@ tensorflow
 tensorflow-hub
 numpy
 cloud-tpu-client
+Pillow 
+moviepy

@@ -13,6 +13,9 @@ import logging
 import tensorflow as tf
 import numpy as np
 import tensorflow_hub as hub
+from io import BytesIO
+import moviepy.editor as mp
+from PIL import Image
 
 
 logging.basicConfig(level=logging.INFO)
@@ -51,27 +54,38 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        new_user = User(username=form.username.data, password=hashed_password, email=form.email.data)
-        new_user.name = form.name.data
-        new_user.bio = form.bio.data
-        if form.profile_pic.data:
+        new_user = User(
+            username=form.username.data,
+            password=hashed_password,
+            email=form.email.data,
+            name=form.name.data,
+            bio=form.bio.data
+        )
+
+        if not form.profile_pic.data:
+            new_user.profile_pic = '/static/default_pfp.jpg'
+        
+        else:
             profile_pic_url = upload_to_s3(form.profile_pic.data)
             if profile_pic_url:
                 new_user.profile_pic = profile_pic_url
             else:
-                flash('failed to upload profile picture. please try again.', 'danger')
+                flash('Failed to upload profile picture. Please try again.', 'danger')
                 return render_template('register.html', form=form)
+
         db.session.add(new_user)
         db.session.commit()
-        flash('your account has been created!', 'success')
+
+        flash('Your account has been created!', 'success')
         login_user(new_user)
         return redirect(url_for('main.dashboard'))
+
     elif form.errors:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
                 flash(f'{fieldName.capitalize()}: {err}', 'danger')
-    return render_template('register.html', form=form)
 
+    return render_template('register.html', form=form)
 
 @main.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -151,7 +165,7 @@ def create_media():
     form.associated_spot.choices = [('0', 'select a spot')] + [(spot.id, spot.name) for spot in Spot.query.all()]
 
     if form.validate_on_submit():
-        media_file = form.media.data 
+        media_file = form.media.data  # Get the file object
         caption = form.caption.data
         associated_spot_id = form.associated_spot.data
 
@@ -171,9 +185,9 @@ def create_media():
                     flash('posted!', 'success')
                     return redirect(url_for('main.dashboard'))
                 else:
-                    flash('failed to upload media. please try again.', 'danger')
+                    flash('Failed to upload media. Please try again.', 'danger')
             except Exception as e:
-                flash(f'error uploading media: {str(e)}', 'danger')
+                flash(f'Error uploading media: {str(e)}', 'danger')
 
     if form.errors:
         for fieldName, errorMessages in form.errors.items():
@@ -184,32 +198,37 @@ def create_media():
 
 s3 = boto3.client('s3')
 
+STANDARD_IMAGE_SIZE = (800, 800)
+STANDARD_VIDEO_SIZE = (1280, 720)
+
 def upload_to_s3(file_obj):
     try:
+        # Use file_obj.filename to get the filename
         file_name = str(uuid.uuid4())
         mime_type, _ = guess_type(file_obj.filename)
-        file_extension = mime_type.split('/')[1]
+        if not mime_type:
+            raise ValueError("Could not determine the MIME type")
 
+        file_extension = mime_type.split('/')[1]
         s3_key = f"{file_name}.{file_extension}"
 
+        s3 = boto3.client('s3')
         s3.upload_fileobj(
             file_obj,
-            os.getenv('S3_BUCKET_NAME'),  
+            os.getenv('S3_BUCKET_NAME'),  # Ensure this is set in your .env file
             s3_key,
             ExtraArgs={
-                'ACL': 'public-read',  
-                'ContentType': mime_type  
+                'ACL': 'public-read',
+                'ContentType': mime_type
             }
         )
 
         file_url = f"https://{os.getenv('S3_BUCKET_NAME')}.s3.amazonaws.com/{s3_key}"
-
         return file_url
 
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
         return None
-
 
 @main.route('/like_post/<int:post_id>', methods=['POST'])
 @login_required

@@ -3,63 +3,60 @@
 {% block title %}dashboard{% endblock %}
 
 {% block content %}
-<div class="container">
-  <h1>dashboard</h1>
-  <div class="link-container">
-    <a href="{{ url_for('main.spot_map') }}" class="btn btn-primary">spot map</a>
-    <a href="{{ url_for('main.create_media') }}" class="btn btn-primary">create post</a>
+<div class="dashboard-header">
+  <div class="header-left">
+    <a href="{{ url_for('main.dashboard') }}">
+      <h1>skatehub</h1><a>
+        <a href="{{ url_for('main.spot_map') }}" class="btn btn-primary">spot map</a>
+        <a href="{{ url_for('main.create_media') }}" class="btn btn-primary">create post</a>
+        <form method="GET" action="{{ url_for('main.search_posts') }}" class="search-form">
+          <input type="text" name="query" placeholder="search posts...">
+        </form>
+  </div>
+  <div class="header-right">
     <a href="{{ url_for('main.profile') }}" class="btn btn-primary">profile</a>
   </div>
+</div>
 
-  <form method="GET" action="{{ url_for('main.search_posts') }}" class="search-form">
-    <input type="text" name="query" placeholder="search posts...">
-    <button type="submit" class="btn btn-primary">search</button>
-  </form>
-
+<div class="container">
   {% if query %}
   <h2>showing results for "{{ query }}" ({{ results_count }} results)</h2>
   {% else %}
-  <h2>posts</h2>
+  <h2>dashboard</h2>
   {% endif %}
 
   <div class="posts">
     {% for post in posts %}
     <div class="post" id="post-{{ post.id }}">
-      <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}{% endif
-        %}</p>
-
-      {% if post.spot %}
-      <p class="post-spot">
-        spot: {{ post.spot.name }}</p>
-      {% endif %}
-
-      {% if current_user.is_authenticated and post.user_id == current_user.id %}
-      <form method="POST" action="{{ url_for('main.delete_post', post_id=post.id) }}"
-        onsubmit="return confirm('Delete post?');">
-        {{ form.hidden_tag() }}
-        <input type="submit" value="delete post">
-      </form>
-      {% endif %}
-
+      <div class="post-header">
+        <img src="{{ post.user.profile_pic }}" alt="profile picture" class="profile-pic">
+        <div class="post-user-info">
+          <p class="username">{{ post.user.username }}</p>
+          {% if post.spot %}
+          <p class="location">{{ post.spot.name }}</p>
+          {% endif %}
+          <p class="timestamp">{{ post.timestamp|timeago }}</p>
+        </div>
+      </div>
       <div class="post-content">
         {% if post.content.endswith('.mp4') %}
-        <video controls>
+        <video controls class="post-media">
           <source src="{{ post.content }}" type="video/mp4">
           your browser does not support the video tag.
         </video>
         {% else %}
-        <img src="{{ post.content }}" alt="post image">
+        <img src="{{ post.content }}" alt="post image" class="post-media">
         {% endif %}
       </div>
       {% if post.caption %}
       <p class="post-caption">{{ post.caption }}</p>
       {% endif %}
       <div class="post-actions">
-        <button class="btn btn-primary btn-small like-button" data-post-id="{{ post.id }}">like</button>
+        <button class="btn btn-small like-button" data-post-id="{{ post.id }}">like</button>
+        <button class="btn btn-small comment-button">comment</button>
         <span id="likes-count-{{ post.id }}">{{ post.likes|length }} likes</span>
-        <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
-          post.comments|length }} comments</a>
       </div>
+      <hr class="post-divider">
     </div>
     {% endfor %}
   </div>

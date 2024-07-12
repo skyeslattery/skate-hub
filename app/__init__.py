@@ -7,6 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 import os
 from logging.handlers import RotatingFileHandler
 from flask_migrate import Migrate
+from datetime import datetime
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
@@ -15,7 +16,7 @@ csrf = CSRFProtect()
 def create_app():
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
-    logger.info('Creating Flask app instance')
+    logger.info('creating flask app instance')
     
     app = Flask(__name__)
     app.secret_key = os.environ.get('SECRET_KEY', 'dev')
@@ -40,7 +41,7 @@ def create_app():
     
     with app.app_context():
         db.create_all()
-    
+
     from app.routes import main
     app.register_blueprint(main)
     
@@ -61,5 +62,36 @@ def create_app():
         app.logger.addHandler(file_handler)
         app.logger.setLevel(logging.INFO)
         app.logger.info('App startup')
+    
+    def timeago(dt, default="just now"):
+        """
+        Returns string representing "time since" e.g.
+        3 days ago, 5 hours ago.
+        """
+        if dt is None:
+            return default
+        now = datetime.utcnow()
+        diff = now - dt
+
+        periods = (
+            (diff.days // 365, "year", "years"),
+            (diff.days // 30, "month", "months"),
+            (diff.days // 7, "week", "weeks"),
+            (diff.days, "day", "days"),
+            (diff.seconds // 3600, "hour", "hours"),
+            (diff.seconds // 60, "minute", "minutes"),
+            (diff.seconds, "second", "seconds"),
+        )
+
+        for period, singular, plural in periods:
+            if period:
+                return "{} {} ago".format(period, singular if period == 1 else plural)
+
+        return default
+
+    def timeago_filter(dt):
+        return timeago(dt)
+
+    app.jinja_env.filters['timeago'] = timeago_filter
     
     return app
