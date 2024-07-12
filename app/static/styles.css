@@ -193,3 +193,11 @@ h1 {
 .hidden {
   display: none;
 }
+
+.like-button {
+  background-color: grey;
+}
+
+.like-button.liked {
+  background-color: red;
+}

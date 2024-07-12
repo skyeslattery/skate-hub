@@ -1,16 +1,64 @@
 {% extends 'base.html' %}
 
-{% block title %}register{% endblock %}
+{% block title %}Register{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h1>Register</h1>
-  <form method="POST" action="">
+  <h1>register</h1>
+  <form method="POST" action="" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
-    {{ form.email }}
-    {{ form.username }}
-    {{ form.password }}
-    {{ form.submit }}
+    <div class="form-group">
+      {{ form.username.label }} <span class="text-danger">*</span>
+      {{ form.username(class="form-control") }}
+      {% for error in form.username.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.email.label }} <span class="text-danger">*</span>
+      {{ form.email(class="form-control") }}
+      {% for error in form.email.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.password.label }} <span class="text-danger">*</span>
+      {{ form.password(class="form-control") }}
+      {% for error in form.password.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.confirm_password.label }} <span class="text-danger">*</span>
+      {{ form.confirm_password(class="form-control") }}
+      {% for error in form.confirm_password.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.name.label }}
+      {{ form.name(class="form-control") }}
+      {% for error in form.name.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.bio.label }}
+      {{ form.bio(class="form-control") }}
+      {% for error in form.bio.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.profile_pic.label }}
+      {{ form.profile_pic(class="form-control-file") }}
+      {% for error in form.profile_pic.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
   </form>
   <a href="{{ url_for('main.login') }}">already have an account? log in</a>
 </div>

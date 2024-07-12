@@ -11,19 +11,34 @@
     <a href="{{ url_for('main.profile') }}" class="btn btn-primary">profile</a>
   </div>
 
+  <form method="GET" action="{{ url_for('main.search_posts') }}" class="search-form">
+    <input type="text" name="query" placeholder="search posts...">
+    <button type="submit" class="btn btn-primary">search</button>
+  </form>
+
+  {% if query %}
+  <h2>showing results for "{{ query }}" ({{ results_count }} results)</h2>
+  {% else %}
   <h2>posts</h2>
+  {% endif %}
+
   <div class="posts">
     {% for post in posts %}
-    <div class="post">
-      <a href="{{ url_for('main.edit_post', post_id=post.id) }}" class="btn btn-primary">edit</a>
+    <div class="post" id="post-{{ post.id }}">
       <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}{% endif
         %}</p>
+
+      <form method="POST" action="{{ url_for('main.delete_post', post_id=post.id) }}"
+        onsubmit="return confirm('delete post?');">
+        {{ form.hidden_tag() }}
+        <input type="submit" value="delete post" class="btn-delete">
+      </form>
 
       <div class="post-content">
         {% if post.content.endswith('.mp4') %}
         <video controls>
           <source src="{{ post.content }}" type="video/mp4">
-          Your browser does not support the video tag.
+          your browser does not support the video tag.
         </video>
         {% else %}
         <img src="{{ post.content }}" alt="post image">
@@ -33,13 +48,8 @@
       <p class="post-caption">{{ post.caption }}</p>
       {% endif %}
       <div class="post-actions">
-        <form action="{{ url_for('main.like_post', post_id=post.id) }}" method="POST" class="inline-form">
-          {{ form.csrf_token }}
-          <button type="submit" class="btn btn-primary btn-small">
-            like
-          </button>
-        </form>
-        <span>{{ post.likes|length }} likes</span>
+        <button class="btn btn-primary btn-small like-button" data-post-id="{{ post.id }}">like</button>
+        <span id="likes-count-{{ post.id }}">{{ post.likes|length }} likes</span>
         <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-primary btn-small">{{
           post.comments|length }} comments</a>
       </div>
@@ -47,4 +57,31 @@
     {% endfor %}
   </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $('.like-button').click(function (e) {
+      e.preventDefault();
+      var postId = $(this).data('post-id');
+      var $button = $(this);
+      $.ajax({
+        url: "{{ url_for('main.like_post', post_id=0) }}".replace('0', postId),
+        method: 'POST',
+        data: {
+          current_page: "{% if query %}search{% else %}dashboard{% endif %}",
+          query: "{{ query }}",
+          csrf_token: "{{ csrf_token() }}"
+        },
+        success: function (response) {
+          $('#likes-count-' + postId).text(response.likes + ' likes');
+          $button.toggleClass('liked');
+        },
+        error: function (xhr) {
+          console.log('Error:', xhr);
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

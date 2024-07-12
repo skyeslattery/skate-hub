@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, url_for, redirect, flash, make_response, request
+from flask import Blueprint, render_template, url_for, redirect, flash, make_response, request, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
 from app import db, bcrypt  
-from app.models import User, RegisterForm, LoginForm, ProfileForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm, EditPostForm, EmptyForm
+from app.models import User, RegisterForm, LoginForm, Spot, SpotForm, MediaForm, Post, Comment, Like, CommentForm, EmptyForm
 import os
 from dotenv import load_dotenv
 import boto3
@@ -10,9 +10,16 @@ import uuid
 import time
 from sqlalchemy.exc import OperationalError, PendingRollbackError
 import logging
+import tensorflow as tf
+import numpy as np
+import tensorflow_hub as hub
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+module_url = "https://tfhub.dev/google/universal-sentence-encoder/4" 
+model = hub.load(module_url)
 
 main = Blueprint('main', __name__)
 load_dotenv()
@@ -31,7 +38,10 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             flash('logged in successfully!', 'success')
-            return redirect(url_for('main.dashboard'))
+
+            posts = Post.query.order_by(Post.timestamp.desc()).all()
+            posts.reverse()
+            return redirect(url_for('main.dashboard', posts=posts))
         else:
             flash('login failed. please check username and password.', 'danger')
     return render_template('login.html', form=form)
@@ -42,40 +52,33 @@ def register():
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         new_user = User(username=form.username.data, password=hashed_password, email=form.email.data)
+        new_user.name = form.name.data
+        new_user.bio = form.bio.data
+        if form.profile_pic.data:
+            profile_pic_url = upload_to_s3(form.profile_pic.data)
+            if profile_pic_url:
+                new_user.profile_pic = profile_pic_url
+            else:
+                flash('failed to upload profile picture. please try again.', 'danger')
+                return render_template('register.html', form=form)
         db.session.add(new_user)
-        commit_session_with_retry(db.session)
-        flash('Your account has been created!', 'success')
-        return redirect(url_for('main.login'))
+        db.session.commit()
+        flash('your account has been created!', 'success')
+        login_user(new_user)
+        return redirect(url_for('main.dashboard'))
     elif form.errors:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
                 flash(f'{fieldName.capitalize()}: {err}', 'danger')
     return render_template('register.html', form=form)
 
+
 @main.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    form = ProfileForm(obj=current_user, current_user_id=current_user.id)
-    if form.validate_on_submit():
-        current_user.username = form.username.data
-        current_user.email = form.email.data
-        try:
-            commit_session_with_retry(db.session)
-            flash('Your profile has been updated!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            flash('An error occurred while updating the profile. Please try again.', 'danger')
-        return redirect(url_for('main.profile'))
-    elif form.errors:
-        for fieldName, errorMessages in form.errors.items():
-            for err in errorMessages:
-                flash(f'{fieldName}: {err}', 'danger')
+    form = EmptyForm()
+    return render_template('profile.html', form=form)
 
-    response = make_response(render_template('profile.html', form=form))
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
 
 @main.route('/dashboard')
 @login_required
@@ -97,7 +100,10 @@ def delete_profile():
         flash('your profile has been deleted.', 'success')
     else:
         flash('user not found.', 'danger')
-    return redirect(url_for('main.home'))
+        return redirect(url_for('main.home'))
+    form = EmptyForm()
+    return render_template('home.html', form=form)
+    
 
 @main.route('/logout', methods=['GET', 'POST'])
 @login_required
@@ -145,17 +151,15 @@ def create_media():
     form.associated_spot.choices = [('0', 'select a spot')] + [(spot.id, spot.name) for spot in Spot.query.all()]
 
     if form.validate_on_submit():
-        media_file = form.media.data  # Get the FileStorage object
+        media_file = form.media.data 
         caption = form.caption.data
         associated_spot_id = form.associated_spot.data
 
         if media_file:
             try:
-                # Handle file upload to S3
                 media_url = upload_to_s3(media_file)
 
                 if media_url:
-                    # Create a new post in your database
                     new_post = Post(
                         content=media_url,
                         caption=caption,
@@ -164,14 +168,13 @@ def create_media():
                     )
                     db.session.add(new_post)
                     commit_session_with_retry(db.session)
-                    flash('New media post added!', 'success')
+                    flash('posted!', 'success')
                     return redirect(url_for('main.dashboard'))
                 else:
-                    flash('Failed to upload media. Please try again.', 'danger')
+                    flash('failed to upload media. please try again.', 'danger')
             except Exception as e:
-                flash(f'Error uploading media: {str(e)}', 'danger')
+                flash(f'error uploading media: {str(e)}', 'danger')
 
-    # Handling form errors
     if form.errors:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
@@ -212,17 +215,19 @@ def upload_to_s3(file_obj):
 @login_required
 def like_post(post_id):
     post = Post.query.get_or_404(post_id)
-    like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
 
-    if like:
+    if post.is_liked_by(current_user):
+        like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
         like = db.session.merge(like)
         db.session.delete(like)
+        liked = False
     else:
         like = Like(user_id=current_user.id, post_id=post_id)
         db.session.add(like)
+        liked = True
 
     commit_session_with_retry(db.session)
-    return redirect(url_for('main.dashboard'))
+    return jsonify({'likes': len(post.likes), 'liked': liked})
 
 @main.route('/comments/<int:post_id>', methods=['GET', 'POST'])
 @login_required
@@ -238,30 +243,8 @@ def comments(post_id):
         return redirect(url_for('main.comments', post_id=post_id))
 
     comments = Comment.query.filter_by(post_id=post_id).all()
-    return render_template('comments.html', post=post, form=form, comments=comments)
 
-@main.route('/edit_post/<int:post_id>', methods=['GET', 'POST'])
-@login_required
-def edit_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    form = EditPostForm(obj=post)
-    
-    if post.user_id != current_user.id:
-        flash('You are not authorized to edit this post.', 'danger')
-        return redirect(url_for('main.dashboard'))
-    
-    if form.validate_on_submit():
-        post.caption = form.caption.data
-        try:
-            commit_session_with_retry(db.session)
-            flash('Post updated successfully!', 'success')
-            return redirect(url_for('main.dashboard'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'An error occurred while updating the post: {str(e)}', 'danger')
-            return redirect(url_for('main.dashboard'))
-    
-    return render_template('edit_post.html', title='Edit Post', form=form, post=post)
+    return render_template('comments.html', post=post, form=form, comments=comments)
 
 
 @main.route('/delete_post/<int:post_id>', methods=['POST'])
@@ -281,4 +264,59 @@ def delete_post(post_id):
     except OperationalError:
         flash('an error occurred while deleting the post. please try again.', 'danger')
     
-    return redirect(url_for('main.dashboard'))
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    posts.reverse()
+    return redirect(url_for('main.dashboard', posts=posts))
+
+@main.route('/search_posts', methods=['POST', 'GET'])
+@login_required
+def search_posts():
+    if request.method == 'POST':
+        query = request.form.get('query')
+    else:
+        query = request.args.get('query')
+
+    if not query:
+        flash("please enter a search term.", "danger")
+        return redirect(url_for('main.dashboard'))
+
+    all_posts = Post.query.all()
+    descriptions = [post.caption for post in all_posts]
+
+    post_embeddings = model(descriptions)
+    query_embedding = model([query])
+
+    cosine_similarities = np.inner(query_embedding, post_embeddings)
+
+    top_indices = np.argsort(cosine_similarities[0])[::-1]
+
+    similarity_threshold = 0.5
+
+    matched_posts = []
+    for index in top_indices:
+        similarity_score = cosine_similarities[0][index]
+        if similarity_score > similarity_threshold:
+            post = all_posts[index]
+            matched_posts.append(post)
+
+    form=EmptyForm()
+
+    if matched_posts:
+        return render_template('dashboard.html', posts=matched_posts, form=form, results_count=len(matched_posts), query=query)
+    else:
+        flash('no matching posts found.', 'warning')
+        return redirect(url_for('main.dashboard'))
+    
+def commit_session_with_retry(session, retries=5, delay=1):
+    for attempt in range(retries):
+        try:
+            session.commit()
+            break
+        except OperationalError as e:
+            if 'database is locked' in str(e):
+                time.sleep(delay)
+            else:
+                raise
+        except PendingRollbackError:
+            session.rollback()
+            time.sleep(delay)

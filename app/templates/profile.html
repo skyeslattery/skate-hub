@@ -1,27 +1,32 @@
 {% extends 'base.html' %}
 
-{% block title %}Profile{% endblock %}
+{% block title %}profile{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h1>Profile</h1>
-  <form action="{{ url_for('main.profile') }}" method="POST">
-    {{ form.hidden_tag() }}
-    <div>
-      {{ form.username.label }}
-      {{ form.username() }}
-      <br />
-      {{ form.email.label }}
-      {{ form.email() }}
-    </div>
-    <div>
-      {{ form.submit() }}
-    </div>
-  </form>
+  <h1>profile</h1>
+
+  <div>
+    {% if current_user.profile_pic %}
+    <p><strong>profile picture:</strong></p>
+    <img src="{{ current_user.profile_pic }}" alt="profile picture" style="max-width: 200px;">
+    {% endif %}
+    <p><strong>username:</strong> {{ current_user.username }}</p>
+    <p><strong>email:</strong> {{ current_user.email }}</p>
+    {% if current_user.name %}
+    <p><strong>name:</strong> {{ current_user.name }}</p>
+    {% endif %}
+    {% if current_user.bio %}
+    <p><strong>bio:</strong> {{ current_user.bio }}</p>
+    {% endif %}
+  </div>
+
+  <br />
   <form method="POST" action="{{ url_for('main.delete_profile') }}"
-    onsubmit="return confirm('Are you sure you want to delete your profile?');">
-    <input type="submit" value="Delete Profile" class="btn-delete">
-    <a href="{{ url_for('main.dashboard') }}" class="btn-back">Back</a>
+    onsubmit="return confirm('are you sure you want to delete your profile?');">
+    <input type="submit" value="delete profile" class="btn-delete">
+    {{ form.hidden_tag() }}
+    <a href="{{ url_for('main.dashboard') }}" class="btn-back">back</a>
   </form>
 </div>
 {% endblock %}

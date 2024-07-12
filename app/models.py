@@ -3,7 +3,7 @@ from flask import flash
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import StringField, TextAreaField, HiddenField, PasswordField, SubmitField, SelectField, FileField
-from wtforms.validators import InputRequired, Length, ValidationError, Email
+from wtforms.validators import InputRequired, Length, ValidationError, Email, EqualTo
 from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv
@@ -96,50 +96,38 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(20), nullable=False, unique=True)
     email = db.Column(db.String(50), nullable=False, unique=True)
     password = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(50), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
+    profile_pic = db.Column(db.String, nullable=True)
     spots = db.relationship('Spot', backref='user', lazy=True)
     posts = db.relationship('Post', backref='user', lazy=True)
     likes = db.relationship('Like', backref='user', lazy=True)
     comments = db.relationship('Comment', backref='user', lazy=True)
 
 class RegisterForm(FlaskForm):
-    email = StringField(validators=[InputRequired(), Email(), Length(min=4, max=25)], render_kw={"placeholder": "email"})
-    username = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "username"})
-    password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "password"})
+    username = StringField('username', validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "username"})
+    email = StringField('email', validators=[Email(), InputRequired(), Length(min=4, max=25)], render_kw={"placeholder": "email"})
+    password = PasswordField('password', validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "password"})
+    confirm_password = PasswordField('confirm password', validators=[InputRequired(), EqualTo('password', message='passwords must match')], render_kw={"placeholder": "confirm password"})
+    name = StringField('name', validators=[Length(max=50)], render_kw={"placeholder": "name"})
+    bio = TextAreaField('bio', validators=[Length(max=500)], render_kw={"placeholder": "bio"})
+    profile_pic = FileField('profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'], 'images only')])
     submit = SubmitField('register')
 
     def validate_username(self, username):
         existing_user_username = User.query.filter_by(username=username.data).first()
         if existing_user_username:
-            raise ValidationError('taken.')
-        
+            raise ValidationError('username is already taken.')
+
     def validate_email(self, email):
         existing_user_email = User.query.filter_by(email=email.data).first()
         if existing_user_email:
-            raise ValidationError('already in use.')
+            raise ValidationError('email is already in use.')
 
 class LoginForm(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "username"})
     password = PasswordField(validators=[InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "password"})
     submit = SubmitField('login')
-
-class ProfileForm(FlaskForm):
-    username = StringField('username', validators=[Length(min=4, max=20)])
-    email = StringField('email', validators=[InputRequired(), Email()])
-    submit = SubmitField('update profile')
-
-    def __init__(self, current_user_id, *args, **kwargs):
-        super(ProfileForm, self).__init__(*args, **kwargs)
-        self.current_user_id = current_user_id
-
-    def validate_username(self, username):
-        existing_user_username = User.query.filter(User.username == username.data, User.id != self.current_user_id).first()
-        if existing_user_username:
-            raise ValidationError('Username taken.')
-
-    def validate_email(self, email):
-        existing_user_email = User.query.filter(User.email == email.data, User.id != self.current_user_id).first()
-        if existing_user_email:
-            raise ValidationError('Email already in use.')
 
 class Spot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -205,11 +193,6 @@ class Comment(db.Model):
 class CommentForm(FlaskForm):
     text = StringField('comment', validators=[InputRequired()])
     submit = SubmitField('post comment')
-
-
-class EditPostForm(FlaskForm):
-    caption = StringField('caption', validators=[InputRequired()])
-    submit = SubmitField('update post')
 
 class EmptyForm(FlaskForm):
     pass
