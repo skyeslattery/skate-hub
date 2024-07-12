@@ -28,6 +28,11 @@
       <p>{{ post.user.username }}{% if post.timestamp %} on {{ post.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}{% endif
         %}</p>
 
+      {% if post.spot %}
+      <p class="post-spot">
+        spot: {{ post.spot.name }}</p>
+      {% endif %}
+
       <form method="POST" action="{{ url_for('main.delete_post', post_id=post.id) }}"
         onsubmit="return confirm('delete post?');">
         {{ form.hidden_tag() }}

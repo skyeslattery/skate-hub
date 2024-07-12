@@ -136,7 +136,7 @@ class Spot(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    posts = db.relationship('Post', backref='Spot', lazy=True)
+    posts = db.relationship('Post', backref='spot', lazy=True)
 
     def to_dict(self):
         return {
@@ -176,7 +176,7 @@ class Post(db.Model):
     media_type = db.Column(db.String(10))
 
     def is_liked_by(self, user):
-        return Like.query.filter_by(post_id=self.id, user_id=user.id).count() > 0
+        return Like.query.filter_by(post_id=self.id, user_id=user.id).count() > 0   
 
 class Like(db.Model):
     id = db.Column(db.Integer, primary_key=True)
