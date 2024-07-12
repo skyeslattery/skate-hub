@@ -100,7 +100,7 @@ class User(db.Model, UserMixin):
     bio = db.Column(db.Text, nullable=True)
     profile_pic = db.Column(db.String, nullable=True)
     spots = db.relationship('Spot', backref='user', lazy=True)
-    posts = db.relationship('Post', backref='user', lazy=True)
+    posts = db.relationship('Post', backref='user', cascade='all, delete-orphan', lazy=True)
     likes = db.relationship('Like', backref='user', lazy=True)
     comments = db.relationship('Comment', backref='user', lazy=True)
 
@@ -171,8 +171,8 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     spot_id = db.Column(db.Integer, db.ForeignKey('spot.id'))
     timestamp = db.Column(db.DateTime)
-    likes = db.relationship('Like', backref='post', lazy=True)
-    comments = db.relationship('Comment', backref='post', lazy=True)
+    likes = db.relationship('Like', backref='post', cascade='all', lazy=True)
+    comments = db.relationship('Comment', backref='post', cascade='all', lazy=True)
     media_type = db.Column(db.String(10))
 
     def is_liked_by(self, user):

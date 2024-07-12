@@ -33,11 +33,13 @@
         spot: {{ post.spot.name }}</p>
       {% endif %}
 
+      {% if current_user.is_authenticated and post.user_id == current_user.id %}
       <form method="POST" action="{{ url_for('main.delete_post', post_id=post.id) }}"
-        onsubmit="return confirm('delete post?');">
+        onsubmit="return confirm('Delete post?');">
         {{ form.hidden_tag() }}
-        <input type="submit" value="delete post" class="btn-delete">
+        <input type="submit" value="delete post">
       </form>
+      {% endif %}
 
       <div class="post-content">
         {% if post.content.endswith('.mp4') %}
