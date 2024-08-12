@@ -24,5 +24,5 @@ Skate Hub is a social media platform designed for skateboarding enthusiasts to p
 <img width="500" alt="Screenshot 2024-08-12 at 11 41 05 AM" src="https://github.com/user-attachments/assets/0b29f6dd-df79-4001-b144-5b061342af96">
 <img width="500" alt="Screenshot 2024-08-12 at 1 02 09 PM" src="https://github.com/user-attachments/assets/a9f75143-a086-4901-ad88-926c89443f12">
 
-Not open to public, used as an example and project for me.
-Contact me: dss354@cornell.edu
+### Not open to public, used as an example and project for me.
+### Contact me: dss354@cornell.edu
