@@ -4,12 +4,11 @@
 
 {% block content %}
 <div class="container">
-  <h1>profile</h1>
-
+  <h1 style="color: var(--stone-blue)">profile</h1>
   <div>
     {% if current_user.profile_pic %}
     <p><strong>profile picture:</strong></p>
-    <img src="{{ current_user.profile_pic }}" alt="profile picture" style="max-width: 200px;">
+    <img src=" {{ current_user.profile_pic }}" alt="profile picture" style="max-width: 200px;">
     {% endif %}
     <p><strong>username:</strong> {{ current_user.username }}</p>
     <p><strong>email:</strong> {{ current_user.email }}</p>
@@ -26,6 +25,7 @@
     onsubmit="return confirm('are you sure you want to delete your profile?');">
     <input type="submit" value="delete profile" class="btn-delete">
     {{ form.hidden_tag() }}
+    <br> <br> <br>
     <a href="{{ url_for('main.dashboard') }}" class="btn-back">back</a>
   </form>
 </div>

@@ -3,7 +3,7 @@
 {% block title %}dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
+<div class="header">
   <div class="header-left">
     <a href="{{ url_for('main.dashboard') }}">
       <h1>skatehub</h1><a>
@@ -53,7 +53,7 @@
       {% endif %}
       <div class="post-actions">
         <button class="btn btn-small like-button" data-post-id="{{ post.id }}">like</button>
-        <button class="btn btn-small comment-button">comment</button>
+        <a href="{{ url_for('main.comments', post_id=post.id) }}" class="btn btn-small comment-button">comment</a>
         <span id="likes-count-{{ post.id }}">{{ post.likes|length }} likes</span>
       </div>
       <hr class="post-divider">

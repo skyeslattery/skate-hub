@@ -10,19 +10,13 @@ import uuid
 import time
 from sqlalchemy.exc import OperationalError, PendingRollbackError
 import logging
-import tensorflow as tf
-import numpy as np
-import tensorflow_hub as hub
-from io import BytesIO
-import moviepy.editor as mp
-from PIL import Image
+from sqlalchemy import or_
+from datetime import datetime
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-module_url = "https://tfhub.dev/google/universal-sentence-encoder/4" 
-model = hub.load(module_url)
 
 main = Blueprint('main', __name__)
 load_dotenv()
@@ -165,7 +159,7 @@ def create_media():
     form.associated_spot.choices = [('0', 'select a spot')] + [(spot.id, spot.name) for spot in Spot.query.all()]
 
     if form.validate_on_submit():
-        media_file = form.media.data  # Get the file object
+        media_file = form.media.data 
         caption = form.caption.data
         associated_spot_id = form.associated_spot.data
 
@@ -178,16 +172,17 @@ def create_media():
                         content=media_url,
                         caption=caption,
                         user_id=current_user.id,
-                        spot_id=associated_spot_id
+                        spot_id=associated_spot_id,
+                        timestamp=datetime.utcnow()
                     )
                     db.session.add(new_post)
                     commit_session_with_retry(db.session)
                     flash('posted!', 'success')
                     return redirect(url_for('main.dashboard'))
                 else:
-                    flash('Failed to upload media. Please try again.', 'danger')
+                    flash('failed to upload media. please try again.', 'danger')
             except Exception as e:
-                flash(f'Error uploading media: {str(e)}', 'danger')
+                flash(f'error uploading media: {str(e)}', 'danger')
 
     if form.errors:
         for fieldName, errorMessages in form.errors.items():
@@ -203,7 +198,6 @@ STANDARD_VIDEO_SIZE = (1280, 720)
 
 def upload_to_s3(file_obj):
     try:
-        # Use file_obj.filename to get the filename
         file_name = str(uuid.uuid4())
         mime_type, _ = guess_type(file_obj.filename)
         if not mime_type:
@@ -215,7 +209,7 @@ def upload_to_s3(file_obj):
         s3 = boto3.client('s3')
         s3.upload_fileobj(
             file_obj,
-            os.getenv('S3_BUCKET_NAME'),  # Ensure this is set in your .env file
+            os.getenv('S3_BUCKET_NAME'), 
             s3_key,
             ExtraArgs={
                 'ACL': 'public-read',
@@ -296,34 +290,21 @@ def search_posts():
         query = request.args.get('query')
 
     if not query:
-        flash("please enter a search term.", "danger")
+        flash("Please enter a search term.", "danger")
         return redirect(url_for('main.dashboard'))
 
-    all_posts = Post.query.all()
-    descriptions = [post.caption for post in all_posts]
+    keywords = query.split()
+  
+    search_conditions = [Post.caption.ilike(f'%{keyword}%') for keyword in keywords]
 
-    post_embeddings = model(descriptions)
-    query_embedding = model([query])
+    
+    matched_posts = Post.query.filter(or_(*search_conditions)).all()
 
-    cosine_similarities = np.inner(query_embedding, post_embeddings)
-
-    top_indices = np.argsort(cosine_similarities[0])[::-1]
-
-    similarity_threshold = 0.5
-
-    matched_posts = []
-    for index in top_indices:
-        similarity_score = cosine_similarities[0][index]
-        if similarity_score > similarity_threshold:
-            post = all_posts[index]
-            matched_posts.append(post)
-
-    form=EmptyForm()
-
+    form = EmptyForm()
     if matched_posts:
         return render_template('dashboard.html', posts=matched_posts, form=form, results_count=len(matched_posts), query=query)
     else:
-        flash('no matching posts found.', 'warning')
+        flash('No matching posts found.', 'warning')
         return redirect(url_for('main.dashboard'))
     
 def commit_session_with_retry(session, retries=5, delay=1):

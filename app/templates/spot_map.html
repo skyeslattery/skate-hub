@@ -1,10 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>spot map</h1>
-<a href="{{ url_for('main.post_spot')}}">post a spot</a><br>
-<a href="{{ url_for('main.dashboard')}}">home</a>
-<div id="map" style="height: 500px; width: 40%;"></div>
+<div class="header">
+  <div class="header-left">
+    <h1>skatehub</h1><a>
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">dashboard</a>
+      <a href="{{ url_for('main.post_spot') }}" class="btn btn-primary">post spot</a>
+  </div>
+</div>
+<div id="map" style="display: flex; align-items: center; margin: 20px auto; display: block;
+max-width: 60%;
+height: 700px;"></div>
 <script>
   let map;
   let zoom = 4;

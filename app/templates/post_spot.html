@@ -25,7 +25,7 @@
     </div>
 
     <div class="form-group">
-      <label for="map">Select Location</label>
+      <label for="map">select location</label>
       <div id="map" style="height: 400px; width: 100%;"></div>
       {% for error in form.latitude.errors %}
       <div class="invalid-feedback">{{ error }}</div>
@@ -82,7 +82,6 @@
           });
         }
 
-        // Hidden fields that update from marker location
         document.getElementById('latitude').value = e.latLng.lat();
         document.getElementById('longitude').value = e.latLng.lng();
       });
