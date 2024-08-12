@@ -7,6 +7,7 @@
 - **Social Interaction**: Like and comment on posts with a clean, easy interface
 - **Media Integration**: Post pictures and videos of skate clips, with a variety of extensions accepted
 - **Profile**: Create a profile, with a bio, username, name, and profile picture
+- **Search**: Keyword search for easy access to specific posts
 
 ## Technologies Used
 
