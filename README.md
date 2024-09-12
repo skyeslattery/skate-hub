@@ -13,7 +13,7 @@
 
 - **Frontend**: HTML, CSS, JavaScript
 - **Backend**: Python, Flask
-- **Database**: SQLite
+- **Database**: SQLAlchemy
 - **Additional Tools**: Amazon S3 for media storage
 
 <img width="1000" alt="Screenshot 2024-08-12 at 1 10 29 PM" src="https://github.com/user-attachments/assets/e096a194-8cdd-466b-b1c0-a8ba9026d367">
